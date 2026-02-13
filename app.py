@@ -1,3 +1,5 @@
+"""混合型連接梁設計計算工具（已清理 Git merge conflict 標記版本）。"""
+
 import math
 import os
 import sys
@@ -49,23 +51,23 @@ class CouplingBeamApp:
         geo_frame.grid(row=0, column=0, padx=5, pady=5, sticky="nw")
         self.create_input(geo_frame, "梁寬 b (cm)", "70.0", "b", 0)
         self.create_input(geo_frame, "梁深 h (cm)", "100.0", "h", 1)
-        self.create_input(geo_frame, "梁淨跨距 ln (cm)", "330.0", "ln", 2)
-        self.create_input(geo_frame, "對角筋延伸 Delta (cm)", "5.0", "delta", 3)
+        self.create_input(geo_frame, "梁淨跨距 lₙ (cm)", "330.0", "ln", 2)
+        self.create_input(geo_frame, "對角筋延伸 Δ (cm)", "5.0", "delta", 3)
         self.create_input(geo_frame, "保護層厚度 i (cm)", "4.0", "cover", 4)
 
         mat_frame = ttk.LabelFrame(input_frame, text="2. 材料強度 (kgf/cm²)", padding="10")
         mat_frame.grid(row=0, column=1, padx=5, pady=5, sticky="nw")
-        self.create_input(mat_frame, "混凝土 fc'", "490.0", "fc_prime", 0)
-        self.create_input(mat_frame, "縱向筋 fy", "5000.0", "fy", 1)
-        self.create_input(mat_frame, "對角筋 fyd", "5000.0", "fyd", 2)
-        self.create_input(mat_frame, "橫向筋 fyt", "4200.0", "fyt", 3)
-        self.create_input(mat_frame, "工作筋 fyh", "4200.0", "fyh", 4)
+        self.create_input(mat_frame, "混凝土 f′c", "490.0", "fc_prime", 0)
+        self.create_input(mat_frame, "縱向筋 fᵧ", "5000.0", "fy", 1)
+        self.create_input(mat_frame, "對角筋 fᵧd", "5000.0", "fyd", 2)
+        self.create_input(mat_frame, "橫向筋 fᵧt", "4200.0", "fyt", 3)
+        self.create_input(mat_frame, "工作筋 fᵧh", "4200.0", "fyh", 4)
 
         dem_frame = ttk.LabelFrame(input_frame, text="3. 需求與配置", padding="10")
         dem_frame.grid(row=0, column=2, padx=5, pady=5, sticky="nw")
-        self.create_input(dem_frame, "彎矩需求 Mu (tf-m)", "248.5", "Mu_ton_m", 0)
+        self.create_input(dem_frame, "彎矩需求 Mᵤ (tf-m)", "248.5", "Mu_ton_m", 0)
         self.create_input(dem_frame, "橫向筋間距 s (cm)", "10.0", "s", 1)
-        self.create_input(dem_frame, "XTRACT Ast_req (cm²)", "68.0", "Ast_req", 2)
+        self.create_input(dem_frame, "XTRACT Aₛₜ,req (cm²)", "68.0", "Ast_req", 2)
 
         btn_frame = ttk.Frame(input_frame, padding="10")
         btn_frame.grid(row=1, column=0, columnspan=3, pady=10)
@@ -94,6 +96,9 @@ class CouplingBeamApp:
             self.log("[系統訊息] PDF 模組 (ReportLab) 已載入成功。")
             self.log("請確保程式目錄下有 '1.png' (梁示意圖) 與 '2.png' (配筋詳圖)。")
 
+        self.log("公式輸入提示：可直接貼上 Unicode 字元（例如 ρ、θ、α、φ、Ω、ζ、ₕ、ₓ、²）。")
+        self.log("若只輸入一般文字，程式也會自動將 rho_h / theta^2 轉成 ρₕ / θ² 顯示。")
+
     def create_input(self, parent, label_text, default_val, key, row):
         lbl = ttk.Label(parent, text=label_text)
         lbl.grid(row=row, column=0, sticky="w", pady=2)
@@ -119,6 +124,31 @@ class CouplingBeamApp:
         except ValueError as e:
             raise ValueError(f"輸入錯誤：請檢查 '{key}' 欄位是否為有效數字。") from e
 
+    @staticmethod
+    def prettify_equation_text(text):
+        """將常見工程公式符號轉為較易讀的 Unicode 樣式。"""
+        replacements = {
+            "rho_h": "ρₕ",
+            "rho_v": "ρᵥ",
+            "rho": "ρ",
+            "theta": "θ",
+            "alpha": "α",
+            "phi_s": "φₛ",
+            "phi_f": "φf",
+            "Omega": "Ω",
+            "zeta": "ζ",
+            "Vn,c": "Vn,c",
+            "Vn,t": "Vn,t",
+            "fc'": "f′c",
+            "cm²": "cm²",
+            "^2": "²",
+        }
+
+        pretty = text
+        for old, new in replacements.items():
+            pretty = pretty.replace(old, new)
+        return pretty
+
     def calculate(self):
         self.clear_log()
         try:
@@ -126,13 +156,13 @@ class CouplingBeamApp:
             self.report_data = []
 
             def add_text(text=""):
-                self.report_data.append({"type": "text", "content": text})
+                self.report_data.append({"type": "text", "content": self.prettify_equation_text(text)})
 
             def add_side_by_side(text_lines, filename, img_ratio=0.5):
                 self.report_data.append(
                     {
                         "type": "side_by_side",
-                        "text_lines": text_lines,
+                        "text_lines": [self.prettify_equation_text(line) for line in text_lines],
                         "filename": filename,
                         "img_ratio": img_ratio,
                     }

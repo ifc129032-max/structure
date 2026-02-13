@@ -1,3 +1,5 @@
+"""混合型連接梁設計計算工具（已清理 Git merge conflict 標記版本）。"""
+
 import math
 import os
 import sys
